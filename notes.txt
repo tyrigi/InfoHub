@@ -1,0 +1,8 @@
+Labels:
+jira closed - label_11
+jira updated - label_10
+jira assigned - label_7
+jira created - label_8
+jira comment - label_9
+
+
