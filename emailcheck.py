@@ -45,12 +45,16 @@ def get_bug_assignments(service):
         #message_subject = service.users().messages().get(userId='me', id=bugs['id'], format='metadata', metadataHeaders='Subject').execute()
         message_subject = bug_message.get('payload', []).get('headers', [])[24]['value']
         person = re.search('\w+ (?<= )\w+', bug_message['snippet'][bug_message['snippet'].find('assigned an issue to ')+21:]).group(0)
+        if person.find('Unassigned') != -1:
+            #Bug is not assigned to anyone
+            person = 'Unassigned'
         bug_number = re.search('\w+-\w+', message_subject[message_subject.find('Assigned: ')+10:]).group(0)
-        hist_num = bug_message['historyId']
+        date = bug_message['internalDate']
         new_bug = 1 # 0 - not a new bug 1 - new bug
         for bug_entry in bug_list:
-            if bug_entry['historyId'] == hist_num:
+            if bug_entry['internalDate'] == date:
                 #message has been dealt with
+                print(bug_number," repeated message")
                 new_bug = 0
                 break
             else:
@@ -58,25 +62,28 @@ def get_bug_assignments(service):
                 if bug_entry['number'] == bug_number:
                     # bug is already in the list
                     new_bug = 0
-                    if int(bug_entry['historyId']) < int(hist_num):
+                    if int(bug_entry['internalDate']) < int(date):
                         # current message happened after bug's last update
                         if bug_entry['assignment'] == person:
                             # bug is already assigned to this person
+                            print("already assigned to person")
                             break
                         else:
                             # bug assignment changed
+                            print(bug_number, " changed assignment")
                             bug_entry['assignment'] = person
-                            bug_entry['historyId'] = hist_num
+                            bug_entry['internalDate'] = date
                             break
                     else:
                         #old news, doesn't matter
+                        print(bug_number, " is already in list and up-to-date")
                         break
                 else: 
                     # no match
                     continue
         if new_bug:
-            bug_list.append({'historyId': hist_num, 'number': bug_number, 'assignment': person})
-        
+            print(bug_number," is new")
+            bug_list.append({'internalDate': date, 'number': bug_number, 'assignment': person})
     return bug_list
 
 def get_closed_bugs(service, assigned_bugs):
