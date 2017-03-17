@@ -1,6 +1,7 @@
 from __future__ import print_function
 import httplib2
 import os
+import re
 
 from apiclient import discovery
 from oauth2client import client
@@ -13,27 +14,16 @@ try:
 except ImportError:
     flags = None
 
-# If modifying these scopes, delete your previously saved credentials
-# at ~/.credentials/gmail-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/gmail.readonly'
 CLIENT_SECRET_FILE = 'client_secret.json'
-APPLICATION_NAME = 'Gmail API Python Quickstart'
-
+APPLICATION_NAME = 'Test Bug Assignment Parser'
 
 def get_credentials():
-    """Gets valid user credentials from storage.
-
-    If nothing has been stored, or if the stored credentials are invalid,
-    the OAuth2 flow is completed to obtain the new credentials.
-
-    Returns:
-        Credentials, the obtained credential.
-    """
     home_dir = os.path.expanduser('~')
     credential_dir = os.path.join(home_dir, '.credentials')
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir,'gmail-python-quickstart.json')
+    credential_path = os.path.join(credential_dir, 'gmail-python-bug-parser.json')
 
     store = Storage(credential_path)
     credentials = store.get()
@@ -42,33 +32,25 @@ def get_credentials():
         flow.user_agent = APPLICATION_NAME
         if flags:
             credentials = tools.run_flow(flow, store, flags)
-        else: # Needed only for compatibility with Python 2.6
+        else:
             credentials = tools.run(flow, store)
-        print('Storing credentials to ' + credential_path)
+        print('Storing credentials to '+ credential_path)
     return credentials
 
 def main():
-    """Shows basic usage of the Gmail API.
-     Creates a Gmail API service object and outputs a list of label names
-    of the user's Gmail account.
-    """
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('gmail', 'v1', http=http)
 
-    results = service.users().labels().list(userId='me').execute()
-    labels = results.get('labels', [])
-    jira_label = service.users().labels().get(userId='me',id='Work/Jira').execute()
-    print(jira_label)
-
-    if not labels:
-        print('No labels found.')
-    else:
-        print('Labels:')
-        for label in labels:
-            print(label['name'])
-
+    bug_messages = service.users().messages().list(userId='me', labelIds='Label_7').execute().get('messages', [])
+    for bugs in bug_messages:
+        bug_message = service.users().messages().get(userId='me', id=bugs['id'], format='metadata', metadataHeaders='snippet').execute()
+        assigned_to = bug_message['snippet'][bug_message['snippet'].find('assigned an issue to ')+21:]
+        person = re.search('\w+ (?<= )\w+ ', assigned_to).group(0)
+        if person == 'Tyler Gilbert ':
+            message_subject =  service.users().messages().get(userId='me', id=bugs['id'], format='metadata', metadataHeaders='Subject').execute().get('payload', []).get('headers', [])[0]['value']
+            bug_number = re.search('\w+-\w+', message_subject[message_subject.find('Assigned: ')+10:]).group(0)
+            print(person," - ",bug_number)
 
 if __name__ == '__main__':
     main()
-
