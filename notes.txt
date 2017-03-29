@@ -5,4 +5,7 @@ jira assigned - label_7
 jira created - label_8
 jira comment - label_9
 
-
+Ideas:
+Use Jira API to update a list of bugs
+Use python to pull latest verison of repos and build at ~6AM on weekdays (prebuilt for me in the mornings)
+Gerrit API for identifying version under test?
